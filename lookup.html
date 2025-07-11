@@ -3,92 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shortest Word Finder</title>
+    <title>Sequence Word Finder</title>
     <style>
+        :root {
+            --bg-color: #f5f5f5;
+            --text-color: #333;
+            --input-bg: #fff;
+            --input-border: #ddd;
+            --result-bg: #fff;
+            --result-hover: #f0f0f0;
+            --accent-color: #4CAF50;
+            --secondary-text: #777;
+        }
+        
+        .dark-mode {
+            --bg-color: #1a1a1a;
+            --text-color: #f0f0f0;
+            --input-bg: #2d2d2d;
+            --input-border: #444;
+            --result-bg: #2d2d2d;
+            --result-hover: #3d3d3d;
+            --accent-color: #5cb85c;
+            --secondary-text: #aaa;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            text-align: center;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
         }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
         h1 {
-            color: #333;
+            color: var(--accent-color);
+            margin: 0;
         }
+        
+        .mode-toggle {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
         #search-container {
             margin: 30px 0;
+            position: relative;
         }
+        
         #search-input {
-            padding: 10px;
+            padding: 12px 15px;
             font-size: 16px;
-            width: 300px;
-            border: 2px solid #ddd;
-            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 2px solid var(--input-border);
+            border-radius: 8px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            outline: none;
+            transition: border-color 0.3s;
         }
-        #search-button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: 10px;
+        
+        #search-input:focus {
+            border-color: var(--accent-color);
         }
-        #search-button:hover {
-            background-color: #45a049;
+        
+        #search-input::placeholder {
+            color: var(--secondary-text);
         }
+        
         #result {
             margin-top: 30px;
-            min-height: 100px;
+            min-height: 120px;
         }
+        
         .word-result {
-            font-size: 48px;
+            font-size: 3rem;
             font-weight: bold;
-            color: #2c3e50;
+            color: var(--accent-color);
             margin: 20px 0;
             cursor: pointer;
-            padding: 10px;
-            border-radius: 5px;
-            transition: background-color 0.3s;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: var(--result-bg);
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+        
         .word-result:hover {
-            background-color: #f0f0f0;
+            background-color: var(--result-hover);
+            transform: translateY(-2px);
         }
+        
         .copy-notification {
             font-size: 14px;
-            color: #27ae60;
+            color: var(--accent-color);
             margin-top: 10px;
             opacity: 0;
             transition: opacity 0.3s;
         }
+        
         .loading {
             font-style: italic;
-            color: #7f8c8d;
+            color: var(--secondary-text);
         }
+        
         .error {
             color: #e74c3c;
         }
+        
         .instructions {
             margin: 20px 0;
-            color: #7f8c8d;
+            color: var(--secondary-text);
             font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .no-results {
+            color: var(--secondary-text);
+            font-style: italic;
+        }
+        
+        @media (max-width: 600px) {
+            .word-result {
+                font-size: 2rem;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Shortest Word Finder</h1>
-    <p class="instructions">Enter letters to find the shortest word that contains all of them</p>
+    <header>
+        <h1>Sequence Word Finder</h1>
+        <button class="mode-toggle" id="mode-toggle">
+            <span id="mode-icon">🌙</span> Dark Mode
+        </button>
+    </header>
+    
+    <p class="instructions">
+        Enter letters to find words that contain them <strong>in order</strong>.<br>
+        For example, "abc" will match "abc" or "aabbcc" but not "cab".
+    </p>
     
     <div id="search-container">
-        <input type="text" id="search-input" placeholder="Enter letters...">
-        <button id="search-button">Search</button>
+        <input type="text" id="search-input" placeholder="Type letters to search...">
     </div>
     
-    <div id="result"></div>
+    <div id="result">
+        <p class="loading">Loading word list...</p>
+    </div>
     
     <script>
         let words = [];
+        let darkMode = false;
         
         // Fetch the word list
         async function fetchWords() {
@@ -101,34 +181,25 @@
                     throw new Error('Failed to fetch word list');
                 }
                 words = await response.json();
-                resultDiv.innerHTML = '<p>Word list loaded! Enter letters above to search.</p>';
+                resultDiv.innerHTML = '<p class="instructions">Ready to search. Type letters above.</p>';
             } catch (error) {
                 console.error('Error fetching words:', error);
                 resultDiv.innerHTML = `<p class="error">Error loading word list: ${error.message}</p>`;
             }
         }
         
-        // Find the shortest word containing all input letters
-        function findShortestWord(letters) {
+        // Find words containing the letters in order
+        function findMatchingWords(letters) {
+            if (!letters) return null;
+            
             const lowerLetters = letters.toLowerCase();
-            const letterSet = new Set(lowerLetters.split(''));
+            const regex = new RegExp(lowerLetters.split('').join('.*'), 'i');
             
             let shortestWord = null;
             let shortestLength = Infinity;
             
             for (const word of words) {
-                const lowerWord = word.toLowerCase();
-                let containsAll = true;
-                
-                // Check if word contains all letters
-                for (const letter of letterSet) {
-                    if (!lowerWord.includes(letter)) {
-                        containsAll = false;
-                        break;
-                    }
-                }
-                
-                if (containsAll && word.length < shortestLength) {
+                if (regex.test(word) && word.length < shortestLength) {
                     shortestWord = word;
                     shortestLength = word.length;
                     
@@ -143,17 +214,37 @@
         }
         
         // Display the result
-        function displayResult(word) {
+        function displayResult(word, searchText) {
             const resultDiv = document.getElementById('result');
             
             if (!word) {
-                resultDiv.innerHTML = '<p>No words found containing all those letters.</p>';
+                if (searchText) {
+                    resultDiv.innerHTML = '<p class="no-results">No words found containing those letters in order.</p>';
+                } else {
+                    resultDiv.innerHTML = '<p class="instructions">Ready to search. Type letters above.</p>';
+                }
                 return;
             }
             
+            // Highlight the matching letters
+            const lowerWord = word.toLowerCase();
+            const lowerSearch = searchText.toLowerCase();
+            let lastIndex = 0;
+            let highlightedWord = '';
+            
+            for (const char of lowerSearch) {
+                const index = lowerWord.indexOf(char, lastIndex);
+                if (index !== -1) {
+                    highlightedWord += word.substring(lastIndex, index) + 
+                                     `<span style="text-decoration: underline; color: var(--accent-color)">${word[index]}</span>`;
+                    lastIndex = index + 1;
+                }
+            }
+            highlightedWord += word.substring(lastIndex);
+            
             resultDiv.innerHTML = `
-                <p>Shortest word containing all letters:</p>
-                <div class="word-result" onclick="copyToClipboard('${word}')">${word}</div>
+                <p>Shortest word with "<strong>${searchText}</strong>" in order:</p>
+                <div class="word-result" onclick="copyToClipboard('${word}')">${highlightedWord}</div>
                 <div class="copy-notification" id="copy-notification">Copied to clipboard!</div>
             `;
         }
@@ -169,24 +260,44 @@
             });
         }
         
+        // Toggle dark mode
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            document.body.classList.toggle('dark-mode', darkMode);
+            const icon = document.getElementById('mode-icon');
+            icon.textContent = darkMode ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', darkMode);
+        }
+        
         // Initialize the page
         document.addEventListener('DOMContentLoaded', () => {
+            // Check for saved dark mode preference
+            darkMode = localStorage.getItem('darkMode') === 'true';
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+                document.getElementById('mode-icon').textContent = '☀️';
+            }
+            
+            // Set up event listeners
+            document.getElementById('mode-toggle').addEventListener('click', toggleDarkMode);
+            
+            const searchInput = document.getElementById('search-input');
+            let searchTimeout;
+            
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    const input = searchInput.value.trim();
+                    const result = findMatchingWords(input);
+                    displayResult(result, input);
+                }, 300);
+            });
+            
+            // Focus the input field
+            searchInput.focus();
+            
+            // Load the word list
             fetchWords();
-            
-            document.getElementById('search-button').addEventListener('click', () => {
-                const input = document.getElementById('search-input').value.trim();
-                if (input) {
-                    const result = findShortestWord(input);
-                    displayResult(result);
-                }
-            });
-            
-            // Allow pressing Enter to search
-            document.getElementById('search-input').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    document.getElementById('search-button').click();
-                }
-            });
         });
     </script>
 </body>
