@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sequence Word Finder</title>
+    <title>Strict Sequence Word Finder</title>
     <style>
         :root {
             --bg-color: #f5f5f5;
@@ -147,15 +147,15 @@
 </head>
 <body>
     <header>
-        <h1>Sequence Word Finder</h1>
+        <h1>Strict Sequence Word Finder</h1>
         <button class="mode-toggle" id="mode-toggle">
             <span id="mode-icon">🌙</span> Dark Mode
         </button>
     </header>
     
     <p class="instructions">
-        Enter letters to find words that contain them <strong>in order</strong>.<br>
-        For example, "abc" will match "abc" or "aabbcc" but not "cab".
+        Enter letters to find words that contain them <strong>consecutively in order</strong>.<br>
+        For example, "abc" will match "abc" or "xabcx" but not "aabbcc" or "cab".
     </p>
     
     <div id="search-container">
@@ -188,12 +188,12 @@
             }
         }
         
-        // Find words containing the letters in order
+        // Find words containing the exact consecutive sequence
         function findMatchingWords(letters) {
             if (!letters) return null;
             
             const lowerLetters = letters.toLowerCase();
-            const regex = new RegExp(lowerLetters.split('').join('.*'), 'i');
+            const regex = new RegExp(lowerLetters, 'i');
             
             let shortestWord = null;
             let shortestLength = Infinity;
@@ -219,31 +219,26 @@
             
             if (!word) {
                 if (searchText) {
-                    resultDiv.innerHTML = '<p class="no-results">No words found containing those letters in order.</p>';
+                    resultDiv.innerHTML = '<p class="no-results">No words found containing those letters consecutively.</p>';
                 } else {
                     resultDiv.innerHTML = '<p class="instructions">Ready to search. Type letters above.</p>';
                 }
                 return;
             }
             
-            // Highlight the matching letters
+            // Highlight the matching sequence
             const lowerWord = word.toLowerCase();
             const lowerSearch = searchText.toLowerCase();
-            let lastIndex = 0;
-            let highlightedWord = '';
+            const startIndex = lowerWord.indexOf(lowerSearch);
             
-            for (const char of lowerSearch) {
-                const index = lowerWord.indexOf(char, lastIndex);
-                if (index !== -1) {
-                    highlightedWord += word.substring(lastIndex, index) + 
-                                     `<span style="text-decoration: underline; color: var(--accent-color)">${word[index]}</span>`;
-                    lastIndex = index + 1;
-                }
-            }
-            highlightedWord += word.substring(lastIndex);
+            let highlightedWord = word.substring(0, startIndex) + 
+                                `<span style="text-decoration: underline; color: var(--accent-color)">` +
+                                word.substring(startIndex, startIndex + searchText.length) +
+                                `</span>` +
+                                word.substring(startIndex + searchText.length);
             
             resultDiv.innerHTML = `
-                <p>Shortest word with "<strong>${searchText}</strong>" in order:</p>
+                <p>Shortest word with "<strong>${searchText}</strong>" consecutively:</p>
                 <div class="word-result" onclick="copyToClipboard('${word}')">${highlightedWord}</div>
                 <div class="copy-notification" id="copy-notification">Copied to clipboard!</div>
             `;
