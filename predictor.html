@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Flip Predictor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .input-container {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
+        input[type="text"] {
+            padding: 8px;
+            width: 300px;
+            font-size: 16px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #e9f7ef;
+            border-radius: 5px;
+        }
+        .bar-container {
+            display: flex;
+            height: 30px;
+            margin: 10px 0;
+            background-color: #ddd;
+            border-radius: 4px;
+        }
+        .h-bar {
+            background-color: #4CAF50;
+            border-radius: 4px 0 0 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 5px;
+            color: white;
+        }
+        .t-bar {
+            background-color: #2196F3;
+            border-radius: 0 4px 4px 0;
+            display: flex;
+            align-items: center;
+            padding-left: 5px;
+            color: white;
+        }
+        .stats {
+            margin-top: 15px;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Coin Flip Predictor</h1>
+    
+    <div class="input-container">
+        <p>Enter a sequence of H's (Heads) and T's (Tails):</p>
+        <input type="text" id="sequenceInput" placeholder="e.g., HHTHT">
+        <button id="predictButton" onclick="predictNext()">Predict Next Flip</button>
+        <div id="error" class="error"></div>
+        <div id="loading" class="loading">Loading pattern data...</div>
+    </div>
+    
+    <div id="results" class="results" style="display: none;">
+        <h2>Prediction Results</h2>
+        <p>For sequence: <strong id="sequenceDisplay"></strong></p>
+        
+        <div class="bar-container">
+            <div id="hBar" class="h-bar" style="width: 50%;">H: 50%</div>
+            <div id="tBar" class="t-bar" style="width: 50%;">T: 50%</div>
+        </div>
+        
+        <div class="stats">
+            <p>Possible continuations found in data:</p>
+            <ul id="matchesList"></ul>
+        </div>
+    </div>
+
+    <script>
+        let patternData = [];
+        const predictButton = document.getElementById('predictButton');
+        const loadingElement = document.getElementById('loading');
+        
+        // Disable predict button until data is loaded
+        predictButton.disabled = true;
+        
+        // Fetch pattern data from the URL
+        fetch('https://files.catbox.moe/5jiju2.txt')
+            .then(response => response.text())
+            .then(text => {
+                // Parse the text file
+                const lines = text.split('\n');
+                patternData = lines
+                    .filter(line => line.trim() !== '')
+                    .map(line => {
+                        // Extract pattern and count using regex
+                        const match = line.match(/'([HT]+)' \(length \d+\): (\d+) times/);
+                        if (match) {
+                            return {
+                                pattern: match[1],
+                                length: match[1].length,
+                                count: parseInt(match[2])
+                            };
+                        }
+                        return null;
+                    })
+                    .filter(item => item !== null);
+                
+                loadingElement.textContent = `Loaded ${patternData.length} patterns`;
+                predictButton.disabled = false;
+            })
+            .catch(error => {
+                loadingElement.textContent = 'Error loading pattern data: ' + error.message;
+                loadingElement.className = 'error';
+            });
+
+        function predictNext() {
+            const input = document.getElementById('sequenceInput').value.toUpperCase();
+            const errorElement = document.getElementById('error');
+            const resultsElement = document.getElementById('results');
+            
+            // Validate input
+            if (!input) {
+                errorElement.textContent = 'Please enter a sequence of H and T';
+                resultsElement.style.display = 'none';
+                return;
+            }
+            
+            if (!/^[HT]+$/.test(input)) {
+                errorElement.textContent = 'Sequence can only contain H and T characters';
+                resultsElement.style.display = 'none';
+                return;
+            }
+            
+            errorElement.textContent = '';
+            
+            // Find all patterns that start with the input sequence and are exactly one character longer
+            const matches = patternData.filter(item => 
+                item.pattern.startsWith(input) && item.pattern.length === input.length + 1
+            );
+            
+            // Calculate totals for H and T
+            let hCount = 0;
+            let tCount = 0;
+            
+            matches.forEach(match => {
+                const nextChar = match.pattern[input.length]; // Get the character after the input
+                if (nextChar === 'H') {
+                    hCount += match.count;
+                } else if (nextChar === 'T') {
+                    tCount += match.count;
+                }
+            });
+            
+            const total = hCount + tCount;
+            
+            // Display results
+            document.getElementById('sequenceDisplay').textContent = input;
+            
+            if (total > 0) {
+                const hPercent = Math.round((hCount / total) * 100);
+                const tPercent = Math.round((tCount / total) * 100);
+                
+                document.getElementById('hBar').style.width = hPercent + '%';
+                document.getElementById('hBar').textContent = 'H: ' + hPercent + '%';
+                document.getElementById('tBar').style.width = tPercent + '%';
+                document.getElementById('tBar').textContent = 'T: ' + tPercent + '%';
+                
+                // Show matching patterns
+                const matchesList = document.getElementById('matchesList');
+                matchesList.innerHTML = '';
+                
+                if (matches.length > 0) {
+                    matches.forEach(match => {
+                        const li = document.createElement('li');
+                        const nextChar = match.pattern[input.length];
+                        li.textContent = `${match.pattern} (${match.count} times) - next is ${nextChar}`;
+                        matchesList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = 'No exact matches found in data';
+                    matchesList.appendChild(li);
+                }
+            } else {
+                // No matches found - show 50/50 as default
+                document.getElementById('hBar').style.width = '50%';
+                document.getElementById('hBar').textContent = 'H: 50%';
+                document.getElementById('tBar').style.width = '50%';
+                document.getElementById('tBar').textContent = 'T: 50%';
+                
+                const matchesList = document.getElementById('matchesList');
+                matchesList.innerHTML = '';
+                const li = document.createElement('li');
+                li.textContent = 'No matching patterns found in data - showing default 50/50 probability';
+                matchesList.appendChild(li);
+            }
+            
+            resultsElement.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
