@@ -7,24 +7,24 @@
   <style>
     body {
       font-family: 'Arial', sans-serif;
-      background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
       margin: 0;
       padding: 20px;
-      color: #333;
+      color: #e6e6e6;
       min-height: 100vh;
     }
 
     #main-container {
       max-width: 900px;
       margin: 0 auto;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(30, 30, 46, 0.9);
       border-radius: 15px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
       padding: 30px;
     }
 
     h1 {
-      color: #ff6f61;
+      color: #4cc9f0;
       text-align: center;
       margin-bottom: 20px;
     }
@@ -36,30 +36,32 @@
       position: sticky;
       top: 20px;
       z-index: 100;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(30, 30, 46, 0.9);
       padding: 15px;
       border-radius: 15px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     }
 
     #search-input {
       flex: 1;
       padding: 12px;
       font-size: 16px;
-      border: 2px solid #ff9a9e;
+      border: 2px solid #4cc9f0;
       border-radius: 25px;
       outline: none;
       transition: border-color 0.3s ease;
+      background-color: #2a2a3a;
+      color: #e6e6e6;
     }
 
     #search-input:focus {
-      border-color: #fad0c4;
+      border-color: #f72585;
     }
 
     button {
       padding: 12px 24px;
       font-size: 16px;
-      background: #ff6f61;
+      background: #4361ee;
       color: #fff;
       border: none;
       border-radius: 25px;
@@ -68,56 +70,79 @@
     }
 
     button:hover {
-      background: #ff4a3d;
+      background: #3a56d4;
     }
 
     .table-view {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
-      background: white;
+      background: #2a2a3a;
       border-radius: 10px;
       overflow: hidden;
     }
 
     .table-view th, .table-view td {
       padding: 12px;
-      border: 1px solid #ff9a9e;
+      border: 1px solid #3a3a4a;
       text-align: center;
-      transition: background-color 0.2s;
+      transition: all 0.2s;
     }
 
     .table-view th {
-      background-color: #ff6f61;
+      background-color: #4361ee;
       color: white;
       position: sticky;
       top: 0px;
     }
 
     .table-view tr:hover td {
-      background-color: #fff5f5;
+      background-color: #3a3a4a;
+    }
+
+    .table-view td {
+      cursor: pointer;
+      position: relative;
+    }
+
+    .table-view td:hover {
+      background-color: #4a4a5a !important;
+      transform: scale(1.02);
     }
 
     .info-text {
       text-align: center;
       margin-top: 20px;
       font-style: italic;
-      color: #666;
+      color: #aaa;
     }
 
     footer {
       margin-top: 30px;
       text-align: center;
       font-size: 14px;
-      color: #fff;
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+      color: #aaa;
     }
 
     .shuffle-notice {
       position: fixed;
       bottom: 20px;
       right: 20px;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(67, 97, 238, 0.9);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 20px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .copy-notice {
+      position: fixed;
+      bottom: 60px;
+      right: 20px;
+      background: rgba(247, 37, 133, 0.9);
       color: white;
       padding: 10px 15px;
       border-radius: 20px;
@@ -138,11 +163,12 @@
     </div>
     
     <div id="table-container">
-      <p class="info-text">Type to search words. Press Ctrl to shuffle results.</p>
+      <p class="info-text">Type to search words. Press Ctrl to shuffle results. Click any word to copy it.</p>
     </div>
   </div>
 
   <div class="shuffle-notice" id="shuffle-notice">Results shuffled!</div>
+  <div class="copy-notice" id="copy-notice">Copied!</div>
 
   <footer>Made with ❤️ by Uncle Yao</footer>
 
@@ -251,10 +277,10 @@
       for (let i = 0; i < 5; i++) {
         tableHTML += `
           <tr>
-            <td>${shortestWords[i] || '-'}</td>
-            <td>${longestWords[i] || '-'}</td>
-            <td>${specialWords[i] || '-'}</td>
-            <td>${randomWords[i] || '-'}</td>
+            <td data-word="${shortestWords[i] || ''}">${shortestWords[i] || '-'}</td>
+            <td data-word="${longestWords[i] || ''}">${longestWords[i] || '-'}</td>
+            <td data-word="${specialWords[i] || ''}">${specialWords[i] || '-'}</td>
+            <td data-word="${randomWords[i] || ''}">${randomWords[i] || '-'}</td>
           </tr>
         `;
       }
@@ -263,6 +289,33 @@
       
       // Display table
       document.getElementById('table-container').innerHTML = tableHTML;
+      
+      // Add click event listeners to all table cells
+      document.querySelectorAll('.table-view td').forEach(cell => {
+        cell.addEventListener('click', function() {
+          const word = this.getAttribute('data-word');
+          if (word && word !== '-') {
+            copyToClipboard(word);
+            showCopyNotice();
+          }
+        });
+      });
+    }
+
+    // Copy text to clipboard
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        console.log('Copied to clipboard');
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      });
     }
 
     // Get random words without duplicates
@@ -285,8 +338,9 @@
       rows.forEach((row, i) => {
         const randomCell = row.cells[3];
         randomCell.textContent = randomWords[i] || '-';
+        randomCell.setAttribute('data-word', randomWords[i] || '');
         // Add animation effect
-        randomCell.style.backgroundColor = '#fff5f5';
+        randomCell.style.backgroundColor = '#3a3a4a';
         setTimeout(() => {
           randomCell.style.backgroundColor = '';
         }, 300);
@@ -296,6 +350,15 @@
     // Show shuffle notification
     function showShuffleNotice() {
       const notice = document.getElementById('shuffle-notice');
+      notice.style.opacity = '1';
+      setTimeout(() => {
+        notice.style.opacity = '0';
+      }, 1000);
+    }
+
+    // Show copy notification
+    function showCopyNotice() {
+      const notice = document.getElementById('copy-notice');
       notice.style.opacity = '1';
       setTimeout(() => {
         notice.style.opacity = '0';
